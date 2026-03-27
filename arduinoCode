@@ -1,0 +1,34 @@
+#include <NewPing.h>
+#include<Servo.h>
+
+#define TRIGGER_PIN 8
+#define ECHO_PIN 9
+#define MAX_DISTANCE 200 // Maximum distance in cm
+
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
+Servo myservo;
+
+void setup() {
+  Serial.begin(9600);
+  myservo.attach(6);
+  myservo.write(90);
+}
+
+void loop() {
+  delay(50); // Wait 50ms between pings (approx 20 pings/sec)
+  Serial.print("Ping: ");
+  int val = sonar.ping_cm();
+  Serial.print(val); // Get distance in centimeters
+  Serial.println("cm");
+  if(val <=12){
+    myservo.write(180);
+    delay(3000);
+  }
+   val = sonar.ping_cm();
+  if(val > 12){
+    myservo.write(90);
+    delay(1000);
+  }
+
+  
+}

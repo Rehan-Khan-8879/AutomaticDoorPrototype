@@ -1,0 +1,169 @@
+// This is the project of door security system 
+//In this we use coustom made keypad servo motor and custom made front pannel 
+//connection 
+//                             Arduino pins   function/connection
+//           SERVO             D13      D12       Columb4
+//                             3v3      11        Columb3
+//                             REF      10        Columb2
+//           Button1            A0      D9        Columb1
+//           Button2            A1      D8        ROW4
+//           Button3            A2      D7        ROW3
+//                              A3      D6        ROW2       
+//                              A4      D5        ROW1
+//                              A5      D4        Buzzer
+//                              A6      D3        LED3 for button 3
+//                              A7      D2        LED2 for button 2
+//                              5v      GND
+//                             RST      RST
+//                             GND      RX
+//                             VIN      TX
+
+#include <EEPROM.h>
+#include <Servo.h>
+#include <Keypad.h>
+
+//defining servo
+Servo myservo;
+
+//defining keypad
+const byte ROWS = 4; //four rows
+const byte COLS = 4; //four columns
+//define the cymbols on the buttons of the keypads
+char hexaKeys[ROWS][COLS] = {
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','B'},
+  {'*','0','#','D'}
+};
+byte rowPins[ROWS] = {5, 6, 7, 8}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {9, 10, 11, 12}; //connect to the column pinouts of the keypad
+
+//initialize an instance of class NewKeypad
+Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS); 
+
+char newKey;
+String password = "234";
+String nowKey = "";
+
+//defining the connection and getting the variable 
+#define led2 2
+#define led3 3
+#define buzz 4
+#define button1 A0
+#define button2 A1
+#define button3 A2
+
+//variables
+int address = 0; // EEPROM memory address
+
+bool bState1;
+bool bState2;
+bool bState3;
+
+// default position of servo 
+int depos;
+int openValue = 180;
+int closeValue = 0;
+
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  // servo setting
+  myservo.attach(13);
+  depos = EEPROM.read(0);
+  myservo.write(depos);
+
+  //input and output modes
+  pinMode(button1,INPUT_PULLUP);
+  pinMode(button2,INPUT_PULLUP);
+  pinMode(button3,INPUT_PULLUP);
+
+  pinMode(led2,OUTPUT);
+  pinMode(led3,OUTPUT);
+  pinMode(buzz,OUTPUT);
+  // leds are inverse so HIGH means OFF
+  digitalWrite(led2,HIGH);
+  digitalWrite(led3,HIGH);
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+//                                                       code for identify keywords
+  newKey = customKeypad.getKey();
+  
+  if (newKey){
+    digitalWrite(buzz,HIGH);
+    delay(100);
+    digitalWrite(buzz,LOW);
+    if(newKey == '#'){
+      if( nowKey == password){
+        Serial.println("aaja bahi ander");
+        openDoor();
+      }
+      else if(nowKey != password){ 
+        digitalWrite(buzz,HIGH);
+        delay(1000);
+        digitalWrite(buzz,LOW);      
+        Serial.println("tu mat aa ander bhag jaa ");
+      }
+      nowKey = "";
+    }
+    else{
+      nowKey += newKey;
+      if(newKey == '#' || newKey == '1'){
+        nowKey = "";
+      }
+      
+      //Serial.println(nowKey);
+    }
+  }
+//                                                 END of code for identify keywords
+
+//                                                 Button controls
+  bState1 = digitalRead(button1);
+  bState2 = digitalRead(button2);
+  bState3 = digitalRead(button3);
+
+  if(bState1 == 0){
+    openDoor();
+  }
+  if(bState2 == 0){
+    changeDepos();
+    delay(1500);
+  }
+
+//                                         Code dump or temperory test codes 
+  int temp = EEPROM.read(address);
+  Serial.println(temp);
+
+  /*Serial.print(bState1);
+  Serial.print("    ");
+  Serial.print(bState2);
+  Serial.print("    ");
+  Serial.println(bState3);*/
+}
+
+
+// useful functions
+void openDoor(){
+  myservo.write(openValue);
+  delay(3000);
+  depos = EEPROM.read(address);
+  myservo.write(depos);
+}
+
+void changeDepos(){
+  if(depos == openValue){       // This condition will make the door lock as default
+    digitalWrite(led2,HIGH);
+    depos = closeValue;
+    EEPROM.write(address,depos);
+  }
+  else if(depos == closeValue){  // This condition will force teh door ALWAS OPEN
+    digitalWrite(led2,LOW);
+    depos = openValue;
+    EEPROM.write(address,depos); //updating the value in eeprom 
+  }
+  myservo.write(depos);
+}
